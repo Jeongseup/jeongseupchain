@@ -7,6 +7,8 @@ import (
 	sdkconfig "github.com/cosmos/cosmos-sdk/client/config"
 	"github.com/cosmos/cosmos-sdk/client/debug"
 	"github.com/cosmos/cosmos-sdk/client/keys"
+	"github.com/cosmos/cosmos-sdk/x/crisis"
+
 	"github.com/cosmos/cosmos-sdk/client/rpc"
 	"github.com/cosmos/cosmos-sdk/server"
 	serverconfig "github.com/cosmos/cosmos-sdk/server/config"
@@ -133,10 +135,10 @@ func initRootCmd(rootCmd *cobra.Command, encodingConfig params.EncodingConfig) {
 	)
 	*/
 
-	// ac := appCreator{
-	// 	encCfg: encodingConfig,
-	// }
-	// server.AddCommands(rootCmd, noname.DefaultNodeHome, ac.newApp, ac.appExport, addModuleInitFlags)
+	ac := appCreator{
+		encCfg: encodingConfig,
+	}
+	server.AddCommands(rootCmd, jscapp.DefaultNodeHome, ac.newApp, nil, addModuleInitFlags)
 
 	/* simapp example: 이 파트가 이제 내가 만든 앱에 관련된 command를 넣어주는 단계
 	a := appCreator{encodingConfig}
@@ -150,4 +152,8 @@ func initRootCmd(rootCmd *cobra.Command, encodingConfig params.EncodingConfig) {
 		txCommand(),
 		keys.Commands(jscapp.DefaultNodeHome),
 	)
+}
+
+func addModuleInitFlags(startCmd *cobra.Command) {
+	crisis.AddModuleInitFlags(startCmd)
 }
