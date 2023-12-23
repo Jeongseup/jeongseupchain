@@ -7,25 +7,23 @@ import (
 	"os"
 	"path/filepath"
 
+	jsparams "github.com/Jeongseup/jeongseupchain/app/params"
+	"github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/grpc/tmservice"
 	"github.com/cosmos/cosmos-sdk/client/rpc"
-	"github.com/cosmos/cosmos-sdk/server/api"
-	"github.com/cosmos/cosmos-sdk/server/config"
-	authrest "github.com/cosmos/cosmos-sdk/x/auth/client/rest"
-	authtx "github.com/cosmos/cosmos-sdk/x/auth/tx"
-	"github.com/gorilla/mux"
-	"github.com/rakyll/statik/fs"
-
-	jsparams "github.com/Jeongseup/jeongseupchain/app/params"
-	"github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/codec/types"
+	"github.com/cosmos/cosmos-sdk/server/api"
+	"github.com/cosmos/cosmos-sdk/server/config"
 	servertypes "github.com/cosmos/cosmos-sdk/server/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
+	"github.com/cosmos/cosmos-sdk/version"
 	"github.com/cosmos/cosmos-sdk/x/auth"
+	authrest "github.com/cosmos/cosmos-sdk/x/auth/client/rest"
 	authkeeper "github.com/cosmos/cosmos-sdk/x/auth/keeper"
+	authtx "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/cosmos/cosmos-sdk/x/bank"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
@@ -33,6 +31,11 @@ import (
 	capabilitytypes "github.com/cosmos/cosmos-sdk/x/capability/types"
 	paramskeeper "github.com/cosmos/cosmos-sdk/x/params/keeper"
 	paramstypes "github.com/cosmos/cosmos-sdk/x/params/types"
+	staking "github.com/cosmos/cosmos-sdk/x/staking"
+	stakingkeeper "github.com/cosmos/cosmos-sdk/x/staking/keeper"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
+	"github.com/gorilla/mux"
+	"github.com/rakyll/statik/fs"
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
@@ -51,11 +54,34 @@ var (
 	ModuleBasics = module.NewBasicManager(
 		auth.AppModuleBasic{}, // each module need to meet comsos-sdk default module interface
 		bank.AppModuleBasic{},
+		staking.AppModuleBasic{},
 	)
 
 	// module account permissions
+	// 난 이걸 비워놨구나..
 	moduleAccountPermissions = map[string][]string{
+		// fee collector는 언제 쓰이지?
 		authtypes.FeeCollectorName: nil,
+
+		// 이게 start할 때 필요한 녀석, 밸리데이트 한지 체크하나봄.
+		/*
+			2023/12/23 23:18:52 module account address:
+			map[
+				jeongseup17xpfvakm2amg962yls6f84z3kell8c5l3683ce:true,
+			]
+			panic: bonded_tokens_pool module account has not been set
+		*/
+		stakingtypes.BondedPoolName: {authtypes.Burner, authtypes.Staking},
+
+		/*
+			2023/12/23 23:21:38 module account address:
+			map[
+				jeongseup17xpfvakm2amg962yls6f84z3kell8c5l3683ce:true,
+				jeongseup1fl48vsnmsdzcv85q5d2q4z5ajdha8yu35cd72n:true,
+			]
+			panic: not_bonded_tokens_pool module account has not been set
+		*/
+		stakingtypes.NotBondedPoolName: {authtypes.Burner, authtypes.Staking},
 	}
 )
 
@@ -90,6 +116,7 @@ type JeongseupApp struct {
 	memKeys map[string]*sdk.MemoryStoreKey
 
 	// keepers
+	StakingKeeper stakingkeeper.Keeper
 	AccountKeeper authkeeper.AccountKeeper
 	BankKeeper    bankkeeper.Keeper
 	ParamsKeeper  paramskeeper.Keeper
@@ -134,14 +161,14 @@ func NewJeongseupApp(
 	// baseapp implementation
 	bApp := baseapp.NewBaseApp(appName, logger, db, encodingConfig.TxConfig.TxDecoder(), baseAppOptions...)
 	bApp.SetCommitMultiStoreTracer(traceStore)
-	// bApp.SetVersion(version.Version)
+	bApp.SetVersion(version.Version)
 
 	// 코덱 등록, interface registry
 	bApp.SetInterfaceRegistry(interfaceRegistry)
 
 	// store keys
 	keys := sdk.NewKVStoreKeys(
-		authtypes.StoreKey, banktypes.StoreKey,
+		authtypes.StoreKey, banktypes.StoreKey, stakingtypes.StoreKey,
 	)
 
 	// transient keys
@@ -173,6 +200,20 @@ func NewJeongseupApp(
 		tkeys[paramstypes.StoreKey], // "params"
 	)
 
+	// add keepers
+	app.AccountKeeper = authkeeper.NewAccountKeeper(
+		appCodec, keys[authtypes.StoreKey], app.GetSubspace(authtypes.ModuleName), authtypes.ProtoBaseAccount, moduleAccountPermissions,
+	)
+	app.BankKeeper = bankkeeper.NewBaseKeeper(
+		appCodec, keys[banktypes.StoreKey], app.AccountKeeper, app.GetSubspace(banktypes.ModuleName), app.ModuleAccountAddrs(),
+	)
+	app.StakingKeeper = stakingkeeper.NewKeeper(
+		appCodec,
+		keys[stakingtypes.StoreKey],
+		app.AccountKeeper,
+		app.BankKeeper,
+		app.GetSubspace(stakingtypes.ModuleName),
+	)
 	return app
 }
 
@@ -202,6 +243,17 @@ func (app *JeongseupApp) InitChainer(ctx sdk.Context, req abci.RequestInitChain)
 	// app.UpgradeKeeper 이걸 안하면 어떻게 될까?
 	// app.UpgradeKeeper.SetModuleVersionMap(ctx, app.mm.GetVersionMap())
 	return app.mm.InitGenesis(ctx, app.appCodec, genesisState)
+}
+
+// ModuleAccountAddrs returns all the app's module account addresses.
+func (app *JeongseupApp) ModuleAccountAddrs() map[string]bool {
+	modAccAddrs := make(map[string]bool)
+	for acc := range moduleAccountPermissions {
+		modAccAddrs[authtypes.NewModuleAddress(acc).String()] = true
+	}
+
+	stdlog.Printf("module account address: %v", modAccAddrs)
+	return modAccAddrs
 }
 
 // LegacyAmino returns amino codec -> 테스팅 용도?
@@ -316,7 +368,7 @@ func initParamsKeeper(
 
 	paramsKeeper.Subspace(authtypes.ModuleName)
 	paramsKeeper.Subspace(banktypes.ModuleName)
-	// paramsKeeper.Subspace(stakingtypes.ModuleName)
+	paramsKeeper.Subspace(stakingtypes.ModuleName)
 	// paramsKeeper.Subspace(minttypes.ModuleName)
 	// paramsKeeper.Subspace(distrtypes.ModuleName)
 	// paramsKeeper.Subspace(slashingtypes.ModuleName)
