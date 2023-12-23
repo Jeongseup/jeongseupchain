@@ -1,0 +1,36 @@
+package cmd
+
+import (
+	jsapp "github.com/Jeongseup/jeongseupchain/app"
+	"github.com/cosmos/cosmos-sdk/client"
+	"github.com/cosmos/cosmos-sdk/client/flags"
+
+	"github.com/spf13/cobra"
+)
+
+func txCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:                        "tx",
+		Short:                      "Transactions subcommands",
+		DisableFlagParsing:         true,
+		SuggestionsMinimumDistance: 2,
+		RunE:                       client.ValidateCmd,
+	}
+
+	cmd.AddCommand(
+	// authcmd.GetSignCommand(),
+	// authcmd.GetSignBatchCommand(),
+	// authcmd.GetMultiSignCommand(),
+	// authcmd.GetMultiSignBatchCmd(),
+	// authcmd.GetValidateSignaturesCommand(),
+	// flags.LineBreak,
+	// authcmd.GetBroadcastCommand(),
+	// authcmd.GetEncodeCommand(),
+	// authcmd.GetDecodeCommand(),
+	)
+
+	jsapp.ModuleBasics.AddTxCommands(cmd)
+	cmd.PersistentFlags().String(flags.FlagChainID, "", "The network chain ID")
+
+	return cmd
+}
