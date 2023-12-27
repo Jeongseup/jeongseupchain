@@ -30,5 +30,10 @@ install:
 	@echo "--> installing jeongseupd"
 	@go install $(BUILD_FLAGS) -mod=readonly ./jeongseupd
 
-init:
-	./scripts/init.sh
+init-demo-chain: install
+	@echo "--> init new demo chain"
+	./scripts/init.sh 
+
+	@echo "--> start the chain"
+	./scripts/start.sh
+	

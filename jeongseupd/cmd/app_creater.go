@@ -1,7 +1,10 @@
 package cmd
 
 import (
+	"errors"
 	"io"
+
+	stdlog "log"
 	"path/filepath"
 
 	jscapp "github.com/Jeongseup/jeongseupchain/app"
@@ -56,7 +59,11 @@ func (ac appCreator) newApp(
 	}
 
 	return jscapp.NewJeongseupApp(
-		logger, db, traceStore, true, skipUpgradeHeights,
+		logger,
+		db,
+		traceStore,
+		true, // loadLatest
+		skipUpgradeHeights,
 		cast.ToString(appOpts.Get(flags.FlagHome)),
 		cast.ToUint(appOpts.Get(server.FlagInvCheckPeriod)),
 		ac.encCfg,
@@ -75,45 +82,47 @@ func (ac appCreator) newApp(
 		baseapp.SetSnapshotInterval(cast.ToUint64(appOpts.Get(server.FlagStateSyncSnapshotInterval))),
 		baseapp.SetSnapshotKeepRecent(cast.ToUint32(appOpts.Get(server.FlagStateSyncSnapshotKeepRecent))),
 	)
+
 }
 
-// func (ac appCreator) appExport(
-// 	logger log.Logger,
-// 	db dbm.DB,
-// 	traceStore io.Writer,
-// 	height int64,
-// 	forZeroHeight bool,
-// 	jailAllowedAddrs []string,
-// 	appOpts servertypes.AppOptions,
-// ) (servertypes.ExportedApp, error) {
+func (ac appCreator) appExport(
+	logger log.Logger,
+	db dbm.DB,
+	traceStore io.Writer,
+	height int64,
+	forZeroHeight bool,
+	jailAllowedAddrs []string,
+	appOpts servertypes.AppOptions,
+) (servertypes.ExportedApp, error) {
+	stdlog.Println("be called exporter? ")
+	homePath, ok := appOpts.Get(flags.FlagHome).(string)
+	if !ok || homePath == "" {
+		return servertypes.ExportedApp{}, errors.New("application home is not set")
+	}
 
-// 	homePath, ok := appOpts.Get(flags.FlagHome).(string)
-// 	if !ok || homePath == "" {
-// 		return servertypes.ExportedApp{}, errors.New("application home is not set")
-// 	}
+	var loadLatest bool
+	if height == -1 {
+		stdlog.Println("load latest!")
+		loadLatest = true
+	}
 
-// 	var loadLatest bool
-// 	if height == -1 {
-// 		loadLatest = true
-// 	}
+	jeongseupApp := jscapp.NewJeongseupApp(
+		logger,
+		db,
+		traceStore,
+		loadLatest,
+		map[int64]bool{},
+		homePath,
+		cast.ToUint(appOpts.Get(server.FlagInvCheckPeriod)),
+		ac.encCfg,
+		appOpts,
+	)
 
-// 	jeongseupApp := jscapp.NewJeongseupApp(
-// 		logger,
-// 		db,
-// 		traceStore,
-// 		loadLatest,
-// 		map[int64]bool{},
-// 		homePath,
-// 		cast.ToUint(appOpts.Get(server.FlagInvCheckPeriod)),
-// 		ac.encCfg,
-// 		appOpts,
-// 	)
+	if height != -1 {
+		if err := jeongseupApp.LoadHeight(height); err != nil {
+			return servertypes.ExportedApp{}, err
+		}
+	}
 
-// 	if height != -1 {
-// 		if err := jeongseupApp.LoadHeight(height); err != nil {
-// 			return servertypes.ExportedApp{}, err
-// 		}
-// 	}
-
-// 	return jeongseupApp.ExportAppStateAndValidators(forZeroHeight, jailAllowedAddrs)
-// }
+	return jeongseupApp.ExportAppStateAndValidators(forZeroHeight, jailAllowedAddrs)
+}

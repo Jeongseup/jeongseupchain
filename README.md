@@ -21,4 +21,5 @@ gotest ./cmd/jeongseupd/cmd -v
 2. `moduleAccountPermissions = map[string][]string{}` 도 start cmd시 해당 모듈 어카운트 주소를 통해서 validate하는 로직이 있어서 필요한 듯?
    https://github.com/cosmos/cosmos-sdk/blob/v0.45.4/x/staking/keeper/keeper.go#L45C1-L47C3
 3. 그리고 나서 또 컨센서스에 막힘..
-   ..
+   `panic: cannot store consensus params with no params store set`
+   https://github.com/cosmos/cosmos-sdk/blob/v0.45.10/baseapp/baseapp.go#L481C1-L482C1

@@ -16,8 +16,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	genutilcli "github.com/cosmos/cosmos-sdk/x/genutil/client/cli"
-	ibcclienttypes "github.com/cosmos/ibc-go/v3/modules/core/02-client/types"
-	ibcchanneltypes "github.com/cosmos/ibc-go/v3/modules/core/04-channel/types"
 	"github.com/spf13/cobra"
 	tmcli "github.com/tendermint/tendermint/libs/cli"
 
@@ -43,10 +41,6 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 		Use:   "jeongseupd",
 		Short: "Jeongseup Chain App",
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
-			// set the default command outputs
-			// cmd.SetOut(cmd.OutOrStdout())
-			// cmd.SetErr(cmd.ErrOrStderr())
-
 			initClientCtx, err := client.ReadPersistentCommandFlags(initClientCtx, cmd.Flags())
 			if err != nil {
 				return err
@@ -61,8 +55,8 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 				return err
 			}
 
-			customTemplate, customNonameConfig := initAppConfig()
-			return server.InterceptConfigsPreRunHandler(cmd, customTemplate, customNonameConfig)
+			_, customNonameConfig := initAppConfig()
+			return server.InterceptConfigsPreRunHandler(cmd, "", customNonameConfig)
 		},
 	}
 
@@ -89,17 +83,12 @@ func initAppConfig() (string, interface{}) {
 	// In simapp, we set the min gas prices to 0.
 
 	// custom 디폴트 컨피그 셋업
-	srvConfig.MinGasPrices = "0stake"
+	// srvConfig.MinGasPrices = "0stake"
 	srvConfig.StateSync.SnapshotInterval = 1000
 	srvConfig.StateSync.SnapshotKeepRecent = 10
 
 	return params.CustomConfigTemplate, params.CustomAppConfig{
 		Config: *srvConfig,
-		BypassMinFeeMsgTypes: []string{
-			sdk.MsgTypeURL(&ibcchanneltypes.MsgRecvPacket{}),
-			sdk.MsgTypeURL(&ibcchanneltypes.MsgAcknowledgement{}),
-			sdk.MsgTypeURL(&ibcclienttypes.MsgUpdateClient{}),
-		},
 	}
 }
 
@@ -120,30 +109,11 @@ func initRootCmd(rootCmd *cobra.Command, encodingConfig params.EncodingConfig) {
 		debug.Cmd(),
 		sdkconfig.Cmd(),
 	)
-	/* simapp example
-	rootCmd.AddCommand(
-		genutilcli.InitCmd(simapp.ModuleBasics, simapp.DefaultNodeHome),
-		genutilcli.CollectGenTxsCmd(banktypes.GenesisBalancesIterator{}, simapp.DefaultNodeHome),
-		genutilcli.MigrateGenesisCmd(),
-		genutilcli.GenTxCmd(simapp.ModuleBasics, encodingConfig.TxConfig, banktypes.GenesisBalancesIterator{}, simapp.DefaultNodeHome),
-		genutilcli.ValidateGenesisCmd(simapp.ModuleBasics),
-		AddGenesisAccountCmd(simapp.DefaultNodeHome),
-		tmcli.NewCompletionCmd(rootCmd, true),
-		testnetCmd(simapp.ModuleBasics, banktypes.GenesisBalancesIterator{}),
-		debug.Cmd(),
-		config.Cmd(),
-	)
-	*/
 
 	ac := appCreator{
 		encCfg: encodingConfig,
 	}
-	server.AddCommands(rootCmd, jscapp.DefaultNodeHome, ac.newApp, nil, addModuleInitFlags)
-
-	/* simapp example: 이 파트가 이제 내가 만든 앱에 관련된 command를 넣어주는 단계
-	a := appCreator{encodingConfig}
-	server.AddCommands(rootCmd, simapp.DefaultNodeHome, a.newApp, a.appExport, addModuleInitFlags)
-	*/
+	server.AddCommands(rootCmd, jscapp.DefaultNodeHome, ac.newApp, ac.appExport, addModuleInitFlags)
 
 	// add keybase, auxiliary RPC, query, and tx child commands
 	rootCmd.AddCommand(

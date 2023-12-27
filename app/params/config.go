@@ -31,5 +31,5 @@ type CustomAppConfig struct {
 
 	// BypassMinFeeMsgTypes defines custom message types the operator may set that
 	// will bypass minimum fee checks during CheckTx.
-	BypassMinFeeMsgTypes []string `mapstructure:"bypass-min-fee-msg-types"`
+	// BypassMinFeeMsgTypes []string `mapstructure:"bypass-min-fee-msg-types"`
 }
