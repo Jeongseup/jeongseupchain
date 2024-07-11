@@ -41,6 +41,7 @@ func (app *JeongseupApp) EndBlocker(ctx sdk.Context, req abci.RequestEndBlock) a
 }
 
 // InitChainer application update at chain initialization
+// abci.ResponseInitChain.app_hash가 제네시스 블록의 AppHash
 func (app *JeongseupApp) InitChainer(ctx sdk.Context, req abci.RequestInitChain) abci.ResponseInitChain {
 	var genesisState GenesisState
 	if err := tmjson.Unmarshal(req.AppStateBytes, &genesisState); err != nil {
@@ -51,6 +52,8 @@ func (app *JeongseupApp) InitChainer(ctx sdk.Context, req abci.RequestInitChain)
 
 	// app.UpgradeKeeper 이걸 안하면 어떻게 될까?
 	// app.UpgradeKeeper.SetModuleVersionMap(ctx, app.mm.GetVersionMap())
+
+	app.Logger().Info("THIS IS GENESIS BLOCK APP HASH", string(app.mm.InitGenesis(ctx, app.appCodec, genesisState).AppHash))
 	return app.mm.InitGenesis(ctx, app.appCodec, genesisState)
 }
 
