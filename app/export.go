@@ -8,13 +8,14 @@ import (
 
 	servertypes "github.com/cosmos/cosmos-sdk/server/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
 	"github.com/cosmos/cosmos-sdk/x/staking"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 )
 
 // ExportAppStateAndValidators exports the state of the application for a genesis
 // file.
-func (app *JeongseupApp) ExportAppStateAndValidators(
+func (app *LudiumApp) ExportAppStateAndValidators(
 	forZeroHeight bool, jailAllowedAddrs []string,
 ) (servertypes.ExportedApp, error) {
 	// as if they could withdraw from the start of the next block
@@ -47,7 +48,7 @@ func (app *JeongseupApp) ExportAppStateAndValidators(
 // NOTE zero height genesis is a temporary feature which will be deprecated
 //
 //	in favour of export at a block height
-func (app *JeongseupApp) prepForZeroHeightGenesis(ctx sdk.Context, jailAllowedAddrs []string) {
+func (app *LudiumApp) prepForZeroHeightGenesis(ctx sdk.Context, jailAllowedAddrs []string) {
 	applyAllowedAddrs := false
 
 	// check if there is a allowed address list
@@ -66,13 +67,13 @@ func (app *JeongseupApp) prepForZeroHeightGenesis(ctx sdk.Context, jailAllowedAd
 	}
 
 	/* Just to be safe, assert the invariants on current state. */
-	// app.CrisisKeeper.AssertInvariants(ctx)
+	app.CrisisKeeper.AssertInvariants(ctx)
 
 	/* Handle fee distribution state. */
 
 	// withdraw all validator commission
 	app.StakingKeeper.IterateValidators(ctx, func(_ int64, val stakingtypes.ValidatorI) (stop bool) {
-		// _, _ = app.DistrKeeper.WithdrawValidatorCommission(ctx, val.GetOperator())
+		_, _ = app.DistrKeeper.WithdrawValidatorCommission(ctx, val.GetOperator())
 		return false
 	})
 
@@ -88,16 +89,14 @@ func (app *JeongseupApp) prepForZeroHeightGenesis(ctx sdk.Context, jailAllowedAd
 		if err != nil {
 			panic(err)
 		}
-
-		_, _ = valAddr, delAddr
-		// _, _ = app.DistrKeeper.WithdrawDelegationRewards(ctx, delAddr, valAddr)
+		_, _ = app.DistrKeeper.WithdrawDelegationRewards(ctx, delAddr, valAddr)
 	}
 
 	// clear validator slash events
-	// app.DistrKeeper.DeleteAllValidatorSlashEvents(ctx)
+	app.DistrKeeper.DeleteAllValidatorSlashEvents(ctx)
 
 	// clear validator historical rewards
-	// app.DistrKeeper.DeleteAllValidatorHistoricalRewards(ctx)
+	app.DistrKeeper.DeleteAllValidatorHistoricalRewards(ctx)
 
 	// set context height to zero
 	height := ctx.BlockHeight()
@@ -106,12 +105,12 @@ func (app *JeongseupApp) prepForZeroHeightGenesis(ctx sdk.Context, jailAllowedAd
 	// reinitialize all validators
 	app.StakingKeeper.IterateValidators(ctx, func(_ int64, val stakingtypes.ValidatorI) (stop bool) {
 		// donate any unwithdrawn outstanding reward fraction tokens to the community pool
-		// scraps := app.DistrKeeper.GetValidatorOutstandingRewardsCoins(ctx, val.GetOperator())
-		// feePool := app.DistrKeeper.GetFeePool(ctx)
-		// feePool.CommunityPool = feePool.CommunityPool.Add(scraps...)
-		// app.DistrKeeper.SetFeePool(ctx, feePool)
+		scraps := app.DistrKeeper.GetValidatorOutstandingRewardsCoins(ctx, val.GetOperator())
+		feePool := app.DistrKeeper.GetFeePool(ctx)
+		feePool.CommunityPool = feePool.CommunityPool.Add(scraps...)
+		app.DistrKeeper.SetFeePool(ctx, feePool)
 
-		// app.DistrKeeper.Hooks().AfterValidatorCreated(ctx, val.GetOperator())
+		app.DistrKeeper.Hooks().AfterValidatorCreated(ctx, val.GetOperator())
 		return false
 	})
 
@@ -125,10 +124,8 @@ func (app *JeongseupApp) prepForZeroHeightGenesis(ctx sdk.Context, jailAllowedAd
 		if err != nil {
 			panic(err)
 		}
-
-		_, _ = valAddr, delAddr
-		// app.DistrKeeper.Hooks().BeforeDelegationCreated(ctx, delAddr, valAddr)
-		// app.DistrKeeper.Hooks().AfterDelegationModified(ctx, delAddr, valAddr)
+		app.DistrKeeper.Hooks().BeforeDelegationCreated(ctx, delAddr, valAddr)
+		app.DistrKeeper.Hooks().AfterDelegationModified(ctx, delAddr, valAddr)
 	}
 
 	// reset context height
@@ -186,12 +183,12 @@ func (app *JeongseupApp) prepForZeroHeightGenesis(ctx sdk.Context, jailAllowedAd
 	/* Handle slashing state. */
 
 	// reset start height on signing infos
-	// app.SlashingKeeper.IterateValidatorSigningInfos(
-	// 	ctx,
-	// 	func(addr sdk.ConsAddress, info slashingtypes.ValidatorSigningInfo) (stop bool) {
-	// 		info.StartHeight = 0
-	// 		app.SlashingKeeper.SetValidatorSigningInfo(ctx, addr, info)
-	// 		return false
-	// 	},
-	// )
+	app.SlashingKeeper.IterateValidatorSigningInfos(
+		ctx,
+		func(addr sdk.ConsAddress, info slashingtypes.ValidatorSigningInfo) (stop bool) {
+			info.StartHeight = 0
+			app.SlashingKeeper.SetValidatorSigningInfo(ctx, addr, info)
+			return false
+		},
+	)
 }

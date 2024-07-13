@@ -1,9 +1,10 @@
 package cmd
 
 import (
-	jsapp "github.com/Jeongseup/jeongseupchain/app"
+	"github.com/Jeongseup/ludiumapp/app"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
+	authcmd "github.com/cosmos/cosmos-sdk/x/auth/client/cli"
 
 	"github.com/spf13/cobra"
 )
@@ -18,18 +19,18 @@ func txCommand() *cobra.Command {
 	}
 
 	cmd.AddCommand(
-	// authcmd.GetSignCommand(),
-	// authcmd.GetSignBatchCommand(),
-	// authcmd.GetMultiSignCommand(),
-	// authcmd.GetMultiSignBatchCmd(),
-	// authcmd.GetValidateSignaturesCommand(),
-	// flags.LineBreak,
-	// authcmd.GetBroadcastCommand(),
-	// authcmd.GetEncodeCommand(),
-	// authcmd.GetDecodeCommand(),
+		authcmd.GetSignCommand(),
+		authcmd.GetSignBatchCommand(),
+		authcmd.GetMultiSignCommand(),
+		authcmd.GetMultiSignBatchCmd(),
+		authcmd.GetValidateSignaturesCommand(),
+		flags.LineBreak,
+		authcmd.GetBroadcastCommand(),
+		authcmd.GetEncodeCommand(),
+		authcmd.GetDecodeCommand(),
 	)
 
-	jsapp.ModuleBasics.AddTxCommands(cmd)
+	app.ModuleBasics.AddTxCommands(cmd)
 	cmd.PersistentFlags().String(flags.FlagChainID, "", "The network chain ID")
 
 	return cmd

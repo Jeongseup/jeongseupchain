@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	jscapp "github.com/Jeongseup/jeongseupchain/app"
-	jsccmd "github.com/Jeongseup/jeongseupchain/jeongseupd/cmd"
+	jscapp "github.com/Jeongseup/ludiumapp/app"
+	jsccmd "github.com/Jeongseup/ludiumapp/ludiumappd/cmd"
 	svrcmd "github.com/cosmos/cosmos-sdk/server/cmd"
 	"github.com/cosmos/cosmos-sdk/x/genutil/client/cli"
 )

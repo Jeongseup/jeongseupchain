@@ -4,11 +4,10 @@ import (
 	"errors"
 	"io"
 
-	stdlog "log"
 	"path/filepath"
 
-	jscapp "github.com/Jeongseup/jeongseupchain/app"
-	jscparams "github.com/Jeongseup/jeongseupchain/app/params"
+	"github.com/Jeongseup/ludiumapp/app"
+	"github.com/Jeongseup/ludiumapp/app/params"
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/server"
@@ -22,7 +21,7 @@ import (
 )
 
 type appCreator struct {
-	encCfg jscparams.EncodingConfig
+	encCfg params.EncodingConfig
 }
 
 func (ac appCreator) newApp(
@@ -58,7 +57,8 @@ func (ac appCreator) newApp(
 		panic(err)
 	}
 
-	return jscapp.NewJeongseupApp(
+	// NOTE:
+	return app.NewLudiumApp(
 		logger,
 		db,
 		traceStore,
@@ -94,7 +94,7 @@ func (ac appCreator) appExport(
 	jailAllowedAddrs []string,
 	appOpts servertypes.AppOptions,
 ) (servertypes.ExportedApp, error) {
-	stdlog.Println("be called exporter? ")
+
 	homePath, ok := appOpts.Get(flags.FlagHome).(string)
 	if !ok || homePath == "" {
 		return servertypes.ExportedApp{}, errors.New("application home is not set")
@@ -102,11 +102,10 @@ func (ac appCreator) appExport(
 
 	var loadLatest bool
 	if height == -1 {
-		stdlog.Println("load latest!")
 		loadLatest = true
 	}
 
-	jeongseupApp := jscapp.NewJeongseupApp(
+	ludiumApp := app.NewLudiumApp(
 		logger,
 		db,
 		traceStore,
@@ -119,10 +118,10 @@ func (ac appCreator) appExport(
 	)
 
 	if height != -1 {
-		if err := jeongseupApp.LoadHeight(height); err != nil {
+		if err := ludiumApp.LoadHeight(height); err != nil {
 			return servertypes.ExportedApp{}, err
 		}
 	}
 
-	return jeongseupApp.ExportAppStateAndValidators(forZeroHeight, jailAllowedAddrs)
+	return ludiumApp.ExportAppStateAndValidators(forZeroHeight, jailAllowedAddrs)
 }

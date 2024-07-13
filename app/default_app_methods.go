@@ -1,7 +1,7 @@
 package app
 
 import (
-	stdlog "log"
+	"encoding/json"
 	"net/http"
 
 	"github.com/cosmos/cosmos-sdk/client"
@@ -12,117 +12,129 @@ import (
 	"github.com/cosmos/cosmos-sdk/server/api"
 	"github.com/cosmos/cosmos-sdk/server/config"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/types/module"
 	authrest "github.com/cosmos/cosmos-sdk/x/auth/client/rest"
 	authtx "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	crisistypes "github.com/cosmos/cosmos-sdk/x/crisis/types"
+	distrtypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
+	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
+	minttypes "github.com/cosmos/cosmos-sdk/x/mint/types"
 	paramskeeper "github.com/cosmos/cosmos-sdk/x/params/keeper"
 	paramstypes "github.com/cosmos/cosmos-sdk/x/params/types"
+	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/gorilla/mux"
 	"github.com/rakyll/statik/fs"
 	abci "github.com/tendermint/tendermint/abci/types"
-	tmjson "github.com/tendermint/tendermint/libs/json"
 )
 
 // Name returns the name of the App
-func (app *JeongseupApp) Name() string { return app.BaseApp.Name() }
+func (app *LudiumApp) Name() string { return app.BaseApp.Name() }
 
 // BeginBlocker application updates every begin block
-func (app *JeongseupApp) BeginBlocker(ctx sdk.Context, req abci.RequestBeginBlock) abci.ResponseBeginBlock {
+func (app *LudiumApp) BeginBlocker(ctx sdk.Context, req abci.RequestBeginBlock) abci.ResponseBeginBlock {
 	// nothing to do in begin block
 	return app.mm.BeginBlock(ctx, req)
 }
 
 // EndBlocker application updates every end block
-func (app *JeongseupApp) EndBlocker(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
+func (app *LudiumApp) EndBlocker(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
 	// nothing to do in end block
 	return app.mm.EndBlock(ctx, req)
 }
 
 // InitChainer application update at chain initialization
-// abci.ResponseInitChain.app_hash가 제네시스 블록의 AppHash
-func (app *JeongseupApp) InitChainer(ctx sdk.Context, req abci.RequestInitChain) abci.ResponseInitChain {
+func (app *LudiumApp) InitChainer(ctx sdk.Context, req abci.RequestInitChain) abci.ResponseInitChain {
 	var genesisState GenesisState
-	if err := tmjson.Unmarshal(req.AppStateBytes, &genesisState); err != nil {
-		app.Logger().Info("여기서 에러가 발생")
-		// 이 tmjson는 뭐지? 일반적인 json en-decoding과 다른가?
+	if err := json.Unmarshal(req.AppStateBytes, &genesisState); err != nil {
 		panic(err)
 	}
-
-	// app.UpgradeKeeper 이걸 안하면 어떻게 될까?
-	// app.UpgradeKeeper.SetModuleVersionMap(ctx, app.mm.GetVersionMap())
-
-	app.Logger().Info("THIS IS GENESIS BLOCK APP HASH", string(app.mm.InitGenesis(ctx, app.appCodec, genesisState).AppHash))
+	app.UpgradeKeeper.SetModuleVersionMap(ctx, app.mm.GetVersionMap())
+	// NOTE: app.Logger().Info("THIS IS GENESIS BLOCK APP HASH", string(app.mm.InitGenesis(ctx, app.appCodec, genesisState).AppHash))
 	return app.mm.InitGenesis(ctx, app.appCodec, genesisState)
 }
 
-// for export command
 // LoadHeight loads a particular height
-func (app *JeongseupApp) LoadHeight(height int64) error {
+func (app *LudiumApp) LoadHeight(height int64) error {
 	return app.LoadVersion(height)
 }
 
 // ModuleAccountAddrs returns all the app's module account addresses.
-func (app *JeongseupApp) ModuleAccountAddrs() map[string]bool {
+func (app *LudiumApp) ModuleAccountAddrs() map[string]bool {
 	modAccAddrs := make(map[string]bool)
-	for acc := range moduleAccountPermissions {
+	for acc := range maccPerms {
 		modAccAddrs[authtypes.NewModuleAddress(acc).String()] = true
 	}
 
-	stdlog.Printf("module account address: %v", modAccAddrs)
+	// NOTE: module account address
+	// stdlog.Printf("module account address: %v", modAccAddrs)
 	return modAccAddrs
 }
 
-// LegacyAmino returns amino codec -> 테스팅 용도?
-func (app *JeongseupApp) LegacyAmino() *codec.LegacyAmino {
+// LegacyAmino returns SimApp's amino codec.
+//
+// NOTE: This is solely to be used for testing purposes as it may be desirable
+// for modules to register their own custom testing types.
+func (app *LudiumApp) LegacyAmino() *codec.LegacyAmino {
 	return app.legacyAmino
 }
 
-// AppCoedc returns app codec -> testing
-func (app *JeongseupApp) AppCodec() codec.Codec {
+// AppCodec returns SimApp's app codec.
+//
+// NOTE: This is solely to be used for testing purposes as it may be desirable
+// for modules to register their own custom testing types.
+func (app *LudiumApp) AppCodec() codec.Codec {
 	return app.appCodec
 }
 
-// InterfaceRegistry returns JeongseupApp's InterfaceRegistry
-func (app *JeongseupApp) InterfaceRegistry() types.InterfaceRegistry {
+// InterfaceRegistry returns SimApp's InterfaceRegistry
+func (app *LudiumApp) InterfaceRegistry() types.InterfaceRegistry {
 	return app.interfaceRegistry
 }
 
-// GetKey returns the KVStoreKey for the provided store key
-func (app *JeongseupApp) GetKey(storeKey string) *sdk.KVStoreKey {
+// GetKey returns the KVStoreKey for the provided store key.
+//
+// NOTE: This is solely to be used for testing purposes.
+func (app *LudiumApp) GetKey(storeKey string) *sdk.KVStoreKey {
 	return app.keys[storeKey]
 }
 
 // GetTKey returns the TransientStoreKey for the provided store key.
 //
 // NOTE: This is solely to be used for testing purposes.
-func (app *JeongseupApp) GetTKey(storeKey string) *sdk.TransientStoreKey {
+func (app *LudiumApp) GetTKey(storeKey string) *sdk.TransientStoreKey {
 	return app.tkeys[storeKey]
 }
 
 // GetMemKey returns the MemStoreKey for the provided mem key.
 //
 // NOTE: This is solely used for testing purposes.
-func (app *JeongseupApp) GetMemKey(storeKey string) *sdk.MemoryStoreKey {
+func (app *LudiumApp) GetMemKey(storeKey string) *sdk.MemoryStoreKey {
 	return app.memKeys[storeKey]
 }
 
 // GetSubspace returns a param subspace for a given module name.
-// subspace..?
+// NOTE: what is subspace..?
 // http://seed-1.mainnet.rizon.world:1317/cosmos/params/v1beta1/params?subspace=transfer&key=SendEnabled
 // gaiad q params subspace baseapp BlockParams --node http://localhost:26657
-func (app *JeongseupApp) GetSubspace(moduleName string) paramstypes.Subspace {
+func (app *LudiumApp) GetSubspace(moduleName string) paramstypes.Subspace {
 	subspace, _ := app.ParamsKeeper.GetSubspace(moduleName)
-	stdlog.Printf("%s module's subspace: %v", moduleName, subspace)
 	return subspace
 }
 
-// RegisterAPIRoutes registers all application module routes with the provided API server.
-func (app *JeongseupApp) RegisterAPIRoutes(apiSvr *api.Server, apiConfig config.APIConfig) {
+// SimulationManager implements the SimulationApp interface
+func (app *LudiumApp) SimulationManager() *module.SimulationManager {
+	return app.sm
+}
+
+// RegisterAPIRoutes registers all application module routes with the provided
+// API server.
+func (app *LudiumApp) RegisterAPIRoutes(apiSvr *api.Server, apiConfig config.APIConfig) {
 	clientCtx := apiSvr.ClientCtx
 
-	// 1.register rpc routes into lcd api
+	// NOTE: 1.register rpc routes into lcd api
 	rpc.RegisterRoutes(clientCtx, apiSvr.Router)
 	/*
 		r.HandleFunc("/node_info", NodeInfoRequestHandlerFn(clientCtx)).Methods("GET")
@@ -133,7 +145,7 @@ func (app *JeongseupApp) RegisterAPIRoutes(apiSvr *api.Server, apiConfig config.
 		r.HandleFunc("/validatorsets/{height}", ValidatorSetRequestHandlerFn(clientCtx)).Methods("GET")
 	*/
 
-	// 2. register tx routes into api
+	// NOTE: 2. register tx routes into api
 	authrest.RegisterTxRoutes(clientCtx, apiSvr.Router)
 	/*
 		r.HandleFunc("/txs/{hash}", QueryTxRequestHandlerFn(clientCtx)).Methods("GET")
@@ -141,7 +153,7 @@ func (app *JeongseupApp) RegisterAPIRoutes(apiSvr *api.Server, apiConfig config.
 		r.HandleFunc("/txs/decode", DecodeTxRequestHandlerFn(clientCtx)).Methods("POST")
 	*/
 
-	// 3. 이건 뭐지?
+	// NOTE: 3. grpc
 	// RegisterGRPCGatewayRoutes mounts the tx service's GRPC-gateway routes on the
 	authtx.RegisterGRPCGatewayRoutes(clientCtx, apiSvr.GRPCGatewayRouter)
 	tmservice.RegisterGRPCGatewayRoutes(clientCtx, apiSvr.GRPCGatewayRouter)
@@ -156,6 +168,16 @@ func (app *JeongseupApp) RegisterAPIRoutes(apiSvr *api.Server, apiConfig config.
 	}
 }
 
+// RegisterTxService implements the Application.RegisterTxService method.
+func (app *LudiumApp) RegisterTxService(clientCtx client.Context) {
+	authtx.RegisterTxService(app.BaseApp.GRPCQueryRouter(), clientCtx, app.BaseApp.Simulate, app.interfaceRegistry)
+}
+
+// RegisterTendermintService implements the Application.RegisterTendermintService method.
+func (app *LudiumApp) RegisterTendermintService(clientCtx client.Context) {
+	tmservice.RegisterTendermintService(app.BaseApp.GRPCQueryRouter(), clientCtx, app.interfaceRegistry)
+}
+
 // RegisterSwaggerAPI registers swagger route with API Server
 func RegisterSwaggerAPI(rtr *mux.Router) {
 	statikFS, err := fs.New()
@@ -167,29 +189,27 @@ func RegisterSwaggerAPI(rtr *mux.Router) {
 	rtr.PathPrefix("/swagger/").Handler(http.StripPrefix("/swagger/", staticServer))
 }
 
-// RegisterTxService implements the Application.RegisterTxService method.
-func (app *JeongseupApp) RegisterTxService(clientCtx client.Context) {
-	authtx.RegisterTxService(app.BaseApp.GRPCQueryRouter(), clientCtx, app.BaseApp.Simulate, app.interfaceRegistry)
+// GetMaccPerms returns a copy of the module account permissions
+func GetMaccPerms() map[string][]string {
+	dupMaccPerms := make(map[string][]string)
+	for k, v := range maccPerms {
+		dupMaccPerms[k] = v
+	}
+	return dupMaccPerms
 }
-
-// RegisterTendermintService implements the Application.RegisterTendermintService method.
-func (app *JeongseupApp) RegisterTendermintService(clientCtx client.Context) {
-	tmservice.RegisterTendermintService(app.BaseApp.GRPCQueryRouter(), clientCtx, app.interfaceRegistry)
-}
-
-// for testing GetMaccPerms()
 
 // initParamsKeeper init params keeper and its subspaces
-func initParamsKeeper(
-	appCodec codec.BinaryCodec,
-	legacyAmino *codec.LegacyAmino,
-	key, tkey sdk.StoreKey,
-) paramskeeper.Keeper {
+func initParamsKeeper(appCodec codec.BinaryCodec, legacyAmino *codec.LegacyAmino, key, tkey sdk.StoreKey) paramskeeper.Keeper {
 	paramsKeeper := paramskeeper.NewKeeper(appCodec, legacyAmino, key, tkey)
 
 	paramsKeeper.Subspace(authtypes.ModuleName)
 	paramsKeeper.Subspace(banktypes.ModuleName)
 	paramsKeeper.Subspace(stakingtypes.ModuleName)
+	paramsKeeper.Subspace(minttypes.ModuleName)
+	paramsKeeper.Subspace(distrtypes.ModuleName)
+	paramsKeeper.Subspace(slashingtypes.ModuleName)
+	paramsKeeper.Subspace(govtypes.ModuleName).WithKeyTable(govtypes.ParamKeyTable())
+	paramsKeeper.Subspace(crisistypes.ModuleName)
 
 	return paramsKeeper
 }

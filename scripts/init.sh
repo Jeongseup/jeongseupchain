@@ -1,7 +1,9 @@
 #!/bin/bash
 
+set -ux
+
 # setup vars
-NODE_DAEMON=jeongseupd
+NODE_DAEMON=ludiumappd
 NODE_DENOM=stake
 
 # reset previous init

@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Jeongseup/jeongseupchain/app/helpers"
+	"github.com/Jeongseup/ludiumapp/app/helpers"
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
@@ -15,7 +15,7 @@ import (
 func TestSimAppExportAndBlockedAddrs(t *testing.T) {
 	encCfg := MakeEncodingConfig()
 	db := dbm.NewMemDB()
-	app := NewJeongseupApp(
+	app := NewLudiumApp(
 		log.NewTMLogger(log.NewSyncWriter(os.Stdout)),
 		db,
 		nil,
@@ -26,8 +26,8 @@ func TestSimAppExportAndBlockedAddrs(t *testing.T) {
 		encCfg,
 		helpers.EmptyAppOptions{},
 	)
-
-	for acc := range moduleAccountPermissions {
+	// NOTE: maccPerms means moduleAccountPermissions
+	for acc := range maccPerms {
 		t.Logf("what is this acc: %v", acc)
 		t.Log(app.AccountKeeper.GetModuleAddress(acc))
 
@@ -53,19 +53,10 @@ func TestSimAppExportAndBlockedAddrs(t *testing.T) {
 	)
 	app.Commit()
 
+	logger2 := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+	_ = logger2
 	// Making a new app object with the db, so that initchain hasn't been called
-	// app2 := NewJeongseupApp(
-	// 	log.NewTMLogger(log.NewSyncWriter(os.Stdout)),
-	// 	db,
-	// 	nil,
-	// 	true,
-	// 	map[int64]bool{},
-	// 	DefaultNodeHome,
-	// 	0,
-	// 	encCfg,
-	// 	helpers.EmptyAppOptions{},
-	// )
-
-	// _, err = app2.ExportAppStateAndValidators(false, []string{})
+	// app2 := NewLudiumApp(logger2, db, nil, true, map[int64]bool{}, DefaultNodeHome, 0, encCfg, EmptyAppOptions{})
+	// _, err := app2.ExportAppStateAndValidators(false, []string{})
 	// require.NoError(t, err, "ExportAppStateAndValidators should not have an error")
 }

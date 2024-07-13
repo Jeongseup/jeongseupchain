@@ -1,11 +1,10 @@
 package app
 
 import (
-	"github.com/Jeongseup/jeongseupchain/app/params"
+	"github.com/Jeongseup/ludiumapp/app/params"
 	"github.com/cosmos/cosmos-sdk/std"
 )
 
-// MakeEncodingConfig creates an EncodingConfig for testing
 func MakeEncodingConfig() params.EncodingConfig {
 	encodingConfig := params.MakeEncodingConfig()
 	std.RegisterLegacyAminoCodec(encodingConfig.Amino)

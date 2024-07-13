@@ -11,8 +11,8 @@ ifeq (,$(VERSION))
 endif
 
 # Update the ldflags with the app, client & server names
-ldflags = -X github.com/cosmos/cosmos-sdk/version.Name=jeongseupd \
-	-X github.com/cosmos/cosmos-sdk/version.AppName=jeongseupd \
+ldflags = -X github.com/cosmos/cosmos-sdk/version.Name=ludiumappd \
+	-X github.com/cosmos/cosmos-sdk/version.AppName=ludiumappd \
 	-X github.com/cosmos/cosmos-sdk/version.Version=$(VERSION) \
 	-X github.com/cosmos/cosmos-sdk/version.Commit=$(COMMIT)
 
@@ -27,8 +27,8 @@ all: install
 install:
 	@echo "--> ensure dependencies have not been modified"
 	@go mod verify
-	@echo "--> installing jeongseupd"
-	@go install $(BUILD_FLAGS) -mod=readonly ./jeongseupd
+	@echo "--> installing ludiumappd"
+	@go install $(BUILD_FLAGS) -mod=readonly ./ludiumappd
 
 init-demo-chain: install
 	@echo "--> init new demo chain"

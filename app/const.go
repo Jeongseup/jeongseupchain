@@ -1,6 +1,7 @@
 package app
 
 const (
-	appName     = "Jeongseup"
-	upgradeName = "Genesis"
+	appName         = "LudiumApp"
+	nodeHomeDirName = ".ludiumchain"
+	// upgradeName     = "Genesis"
 )

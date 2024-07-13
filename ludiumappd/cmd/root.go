@@ -19,14 +19,14 @@ import (
 	"github.com/spf13/cobra"
 	tmcli "github.com/tendermint/tendermint/libs/cli"
 
-	jscapp "github.com/Jeongseup/jeongseupchain/app"
-	"github.com/Jeongseup/jeongseupchain/app/params"
+	"github.com/Jeongseup/ludiumapp/app"
+	"github.com/Jeongseup/ludiumapp/app/params"
 )
 
 // NewRootCmd creates a new root command for simd. It is called once in the
 // main function.
 func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
-	encodingConfig := jscapp.MakeEncodingConfig()
+	encodingConfig := app.MakeEncodingConfig()
 	initClientCtx := client.Context{}.
 		WithCodec(encodingConfig.Marshaler).
 		WithInterfaceRegistry(encodingConfig.InterfaceRegistry).
@@ -34,12 +34,12 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 		WithLegacyAmino(encodingConfig.Amino).
 		WithInput(os.Stdin).
 		WithAccountRetriever(types.AccountRetriever{}).
-		WithHomeDir(jscapp.DefaultNodeHome).
+		WithHomeDir(app.DefaultNodeHome).
 		WithViper("")
 
 	rootCmd := &cobra.Command{
-		Use:   "jeongseupd",
-		Short: "Jeongseup Chain App",
+		Use:   "ludiumappd",
+		Short: "LudiumApp Chain",
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 			initClientCtx, err := client.ReadPersistentCommandFlags(initClientCtx, cmd.Flags())
 			if err != nil {
@@ -81,7 +81,7 @@ func initAppConfig() (string, interface{}) {
 	//   own app.toml to override, or use this default value.
 	//
 	// In simapp, we set the min gas prices to 0.
-
+	// NOTE:
 	// custom 디폴트 컨피그 셋업
 	// srvConfig.MinGasPrices = "0stake"
 	srvConfig.StateSync.SnapshotInterval = 1000
@@ -96,15 +96,15 @@ func initRootCmd(rootCmd *cobra.Command, encodingConfig params.EncodingConfig) {
 	config := sdk.GetConfig()
 	config.Seal()
 
-	// 여기서 기본 커맨드 다 넣음.
+	// NOTE:
+	// 여기서 기본 커맨드 다 넣습니다.
 	rootCmd.AddCommand(
-		// 기본적으로 아래 4개의 커맨드는 제네시스를 위해서 들어가나 봄.
-		genutilcli.InitCmd(jscapp.ModuleBasics, jscapp.DefaultNodeHome),
-		genutilcli.CollectGenTxsCmd(banktypes.GenesisBalancesIterator{}, jscapp.DefaultNodeHome),
-		genutilcli.GenTxCmd(jscapp.ModuleBasics, encodingConfig.TxConfig, banktypes.GenesisBalancesIterator{}, jscapp.DefaultNodeHome),
-		genutilcli.ValidateGenesisCmd(jscapp.ModuleBasics),
-		AddGenesisAccountCmd(jscapp.DefaultNodeHome),
-
+		// NOTE: 기본적으로 아래 4개의 커맨드는 제네시스를 위해서 들어갑니다.
+		genutilcli.InitCmd(app.ModuleBasics, app.DefaultNodeHome),
+		genutilcli.CollectGenTxsCmd(banktypes.GenesisBalancesIterator{}, app.DefaultNodeHome),
+		genutilcli.GenTxCmd(app.ModuleBasics, encodingConfig.TxConfig, banktypes.GenesisBalancesIterator{}, app.DefaultNodeHome),
+		genutilcli.ValidateGenesisCmd(app.ModuleBasics),
+		AddGenesisAccountCmd(app.DefaultNodeHome),
 		tmcli.NewCompletionCmd(rootCmd, true),
 		debug.Cmd(),
 		sdkconfig.Cmd(),
@@ -113,14 +113,14 @@ func initRootCmd(rootCmd *cobra.Command, encodingConfig params.EncodingConfig) {
 	ac := appCreator{
 		encCfg: encodingConfig,
 	}
-	server.AddCommands(rootCmd, jscapp.DefaultNodeHome, ac.newApp, ac.appExport, addModuleInitFlags)
+	server.AddCommands(rootCmd, app.DefaultNodeHome, ac.newApp, ac.appExport, addModuleInitFlags)
 
 	// add keybase, auxiliary RPC, query, and tx child commands
 	rootCmd.AddCommand(
 		rpc.StatusCommand(),
 		queryCommand(),
 		txCommand(),
-		keys.Commands(jscapp.DefaultNodeHome),
+		keys.Commands(app.DefaultNodeHome),
 	)
 }
 
